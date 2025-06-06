@@ -10,6 +10,14 @@ use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\PurchaseReceiptController;
+use App\Http\Controllers\Api\WarehouseController;
+use App\Http\Controllers\Api\WarehouseZoneController;
+use App\Http\Controllers\Api\WarehouseStockController;
+use App\Http\Controllers\Api\StockTransferController;
+use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\CashSessionController;
+use App\Http\Controllers\Api\SaleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -213,6 +221,149 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:approve purchase receipts|manage inventory')->group(function () {
         Route::post('purchase-receipts/{purchaseReceipt}/approve', [PurchaseReceiptController::class, 'approve']);
         Route::post('purchase-receipts/{purchaseReceipt}/update-stock', [PurchaseReceiptController::class, 'updateStock']);
+    });
+
+    // Warehouse Management Routes
+
+    // Warehouses - view access for inventory and warehouse staff
+    Route::middleware('permission:view inventory|manage inventory|manage warehouses|view warehouses')->group(function () {
+        Route::get('warehouses', [WarehouseController::class, 'index']);
+        Route::get('warehouses/analytics', [WarehouseController::class, 'globalAnalytics']);
+        Route::get('warehouses/active', [WarehouseController::class, 'getActiveWarehouses']);
+        Route::get('warehouses/{warehouse}', [WarehouseController::class, 'show']);
+        Route::get('warehouses/{warehouse}/analytics', [WarehouseController::class, 'analytics']);
+    });
+
+    // Warehouses - management access
+    Route::middleware('permission:manage warehouses')->group(function () {
+        Route::post('warehouses', [WarehouseController::class, 'store']);
+        Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update']);
+        Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
+        Route::post('warehouses/{warehouse}/set-default', [WarehouseController::class, 'setDefault']);
+    });
+
+    // Warehouse Zones - view access
+    Route::middleware('permission:view inventory|manage inventory|manage warehouses|view warehouses')->group(function () {
+        Route::get('warehouse-zones', [WarehouseZoneController::class, 'index']);
+        Route::get('warehouse-zones/{warehouseZone}', [WarehouseZoneController::class, 'show']);
+        Route::get('warehouses/{warehouse}/zones', [WarehouseZoneController::class, 'byWarehouse']);
+    });
+
+    // Warehouse Zones - management access
+    Route::middleware('permission:manage warehouses')->group(function () {
+        Route::post('warehouse-zones', [WarehouseZoneController::class, 'store']);
+        Route::put('warehouse-zones/{warehouseZone}', [WarehouseZoneController::class, 'update']);
+        Route::delete('warehouse-zones/{warehouseZone}', [WarehouseZoneController::class, 'destroy']);
+    });
+
+    // Warehouse Stock - view access
+    Route::middleware('permission:view inventory|manage inventory|view warehouses')->group(function () {
+        Route::get('warehouse-stocks', [WarehouseStockController::class, 'index']);
+        Route::get('warehouse-stocks/{warehouseStock}', [WarehouseStockController::class, 'show']);
+        Route::get('warehouses/{warehouse}/stocks', [WarehouseStockController::class, 'byWarehouse']);
+        Route::get('products/{product}/warehouse-stocks', [WarehouseStockController::class, 'byProduct']);
+    });
+
+    // Warehouse Stock - management access
+    Route::middleware('permission:manage inventory')->group(function () {
+        Route::post('warehouse-stocks/adjust', [WarehouseStockController::class, 'adjust']);
+        Route::post('warehouse-stocks/transfer', [WarehouseStockController::class, 'transfer']);
+        Route::post('warehouse-stocks/reserve', [WarehouseStockController::class, 'reserve']);
+        Route::post('warehouse-stocks/release', [WarehouseStockController::class, 'release']);
+    });
+
+    // Stock Transfers - view access
+    Route::middleware('permission:view inventory|manage inventory|view warehouses|manage transfers')->group(function () {
+        Route::get('stock-transfers', [StockTransferController::class, 'index']);
+        Route::get('stock-transfers/analytics', [StockTransferController::class, 'analytics']);
+        Route::get('stock-transfers/{stockTransfer}', [StockTransferController::class, 'show']);
+        Route::get('stock-transfers/{stockTransfer}/items', [StockTransferController::class, 'items']);
+        Route::get('warehouses/{warehouse}/transfers', [StockTransferController::class, 'byWarehouse']);
+    });
+
+    // Stock Transfers - management access
+    Route::middleware('permission:manage transfers|manage inventory')->group(function () {
+        Route::post('stock-transfers', [StockTransferController::class, 'store']);
+        Route::put('stock-transfers/{stockTransfer}', [StockTransferController::class, 'update']);
+        Route::delete('stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroy']);
+    });
+
+    // Stock Transfers - approval and processing
+    Route::middleware('permission:approve transfers|manage transfers')->group(function () {
+        Route::post('stock-transfers/{stockTransfer}/approve', [StockTransferController::class, 'approve']);
+        Route::post('stock-transfers/{stockTransfer}/ship', [StockTransferController::class, 'ship']);
+        Route::post('stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receive']);
+        Route::post('stock-transfers/{stockTransfer}/reject', [StockTransferController::class, 'reject']);
+    });
+
+    // Sales Management Routes
+
+    // Customer Management - view access for sales and customer service staff
+    Route::middleware('permission:view customers|manage customers|process sales')->group(function () {
+        Route::get('customers', [CustomerController::class, 'index']);
+        Route::get('customers/search', [CustomerController::class, 'search']);
+        Route::get('customers/analytics', [CustomerController::class, 'analytics']);
+        Route::get('customers/{customer}', [CustomerController::class, 'show']);
+        Route::get('customers/{customer}/purchase-history', [CustomerController::class, 'purchaseHistory']);
+    });
+
+    // Customer Management - create and edit access
+    Route::middleware('permission:manage customers|process sales')->group(function () {
+        Route::post('customers', [CustomerController::class, 'store']);
+        Route::put('customers/{customer}', [CustomerController::class, 'update']);
+        Route::patch('customers/{customer}/loyalty-points', [CustomerController::class, 'updateLoyaltyPoints']);
+    });
+
+    // Customer Management - delete access (restricted)
+    Route::middleware('permission:manage customers')->group(function () {
+        Route::delete('customers/{customer}', [CustomerController::class, 'destroy']);
+    });
+
+    // Payment Methods - view access for sales staff
+    Route::middleware('permission:process sales|manage sales|view payment methods')->group(function () {
+        Route::get('payment-methods', [PaymentMethodController::class, 'index']);
+        Route::get('payment-methods/active', [PaymentMethodController::class, 'getActive']);
+        Route::get('payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
+    });
+
+    // Payment Methods - management access
+    Route::middleware('permission:manage payment methods')->group(function () {
+        Route::post('payment-methods', [PaymentMethodController::class, 'store']);
+        Route::put('payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update']);
+        Route::delete('payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
+        Route::patch('payment-methods/{paymentMethod}/toggle-status', [PaymentMethodController::class, 'toggleStatus']);
+    });
+
+    // Cash Sessions - view access for sales staff and managers
+    Route::middleware('permission:process sales|manage sales|view cash sessions')->group(function () {
+        Route::get('cash-sessions', [CashSessionController::class, 'index']);
+        Route::get('cash-sessions/active', [CashSessionController::class, 'getActive']);
+        Route::get('cash-sessions/summary', [CashSessionController::class, 'getSummary']);
+        Route::get('cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
+    });
+
+    // Cash Sessions - open and close access
+    Route::middleware('permission:process sales|manage cash')->group(function () {
+        Route::post('cash-sessions', [CashSessionController::class, 'store']);
+        Route::post('cash-sessions/{cashSession}/close', [CashSessionController::class, 'close']);
+    });
+
+    // Sales/POS - view access for sales staff and managers
+    Route::middleware('permission:view sales|process sales|manage sales')->group(function () {
+        Route::get('sales', [SaleController::class, 'index']);
+        Route::get('sales/daily-summary', [SaleController::class, 'getDailySummary']);
+        Route::get('sales/search-products', [SaleController::class, 'searchProducts']);
+        Route::get('sales/{sale}', [SaleController::class, 'show']);
+    });
+
+    // Sales/POS - processing access
+    Route::middleware('permission:process sales')->group(function () {
+        Route::post('sales', [SaleController::class, 'store']);
+    });
+
+    // Sales/POS - void access (restricted)
+    Route::middleware('permission:void sales|manage sales')->group(function () {
+        Route::post('sales/{sale}/void', [SaleController::class, 'void']);
     });
 
     // Legacy user route for backward compatibility

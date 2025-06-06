@@ -16,6 +16,18 @@ class DatabaseSeeder extends Seeder
     {
         // Seed roles and permissions first
         $this->call(InventoryPermissionsSeeder::class);
+        $this->call(WarehousePermissionsSeeder::class);
+        $this->call(SalesPermissionsSeeder::class);
+
+        // Seed sales-related data
+        $this->call(PaymentMethodSeeder::class);
+        $this->call(CustomerSeeder::class);
+
+        // Seed supplier data
+        $this->call(SupplierSeeder::class);
+
+        // Seed products with realistic data
+        $this->call(ProductSeeder::class);
 
         // Create a super admin user
         $superAdmin = User::factory()->create([
