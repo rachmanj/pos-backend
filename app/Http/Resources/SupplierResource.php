@@ -17,10 +17,13 @@ class SupplierResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'code' => $this->code,
             'contact_person' => $this->contact_person,
             'email' => $this->email,
             'phone' => $this->phone,
             'address' => $this->address,
+            'city' => $this->city,
+            'country' => $this->country,
             'tax_number' => $this->tax_number,
             'payment_terms' => $this->payment_terms,
             'status' => $this->status,

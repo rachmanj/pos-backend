@@ -25,6 +25,7 @@ class SupplierApiTest extends TestCase
         // Create permissions
         Permission::create(['name' => 'view purchasing']);
         Permission::create(['name' => 'manage purchasing']);
+        Permission::create(['name' => 'manage inventory']);
 
         // Create roles
         $managerRole = Role::create(['name' => 'manager']);
@@ -56,10 +57,13 @@ class SupplierApiTest extends TestCase
                     '*' => [
                         'id',
                         'name',
+                        'code',
                         'contact_person',
                         'email',
                         'phone',
                         'address',
+                        'city',
+                        'country',
                         'tax_number',
                         'payment_terms',
                         'status',
@@ -67,7 +71,7 @@ class SupplierApiTest extends TestCase
                         'updated_at'
                     ]
                 ],
-                'meta'
+                'pagination'
             ]);
 
         $this->assertCount(3, $response->json('data'));
@@ -108,6 +112,7 @@ class SupplierApiTest extends TestCase
     {
         $supplierData = [
             'name' => 'Test Supplier Ltd',
+            'code' => 'SUP001',
             'contact_person' => 'John Doe',
             'email' => 'john@testsupplier.com',
             'phone' => '+1234567890',
@@ -144,7 +149,7 @@ class SupplierApiTest extends TestCase
         $response = $this->postJson('/api/suppliers', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['name', 'status']);
+            ->assertJsonValidationErrors(['name', 'payment_terms', 'status']);
     }
 
     /** @test */
@@ -180,6 +185,54 @@ class SupplierApiTest extends TestCase
     }
 
     /** @test */
+    public function it_validates_payment_terms_field()
+    {
+        Sanctum::actingAs($this->user);
+
+        // Test missing payment_terms
+        $response = $this->postJson('/api/suppliers', [
+            'name' => 'Test Supplier',
+            'code' => 'SUP002',
+            'status' => 'active'
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('payment_terms');
+
+        // Test invalid payment_terms (negative)
+        $response = $this->postJson('/api/suppliers', [
+            'name' => 'Test Supplier',
+            'code' => 'SUP003',
+            'payment_terms' => -1,
+            'status' => 'active'
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('payment_terms');
+
+        // Test invalid payment_terms (too large)
+        $response = $this->postJson('/api/suppliers', [
+            'name' => 'Test Supplier',
+            'code' => 'SUP004',
+            'payment_terms' => 400,
+            'status' => 'active'
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('payment_terms');
+
+        // Test valid payment_terms
+        $response = $this->postJson('/api/suppliers', [
+            'name' => 'Test Supplier',
+            'code' => 'SUP005',
+            'payment_terms' => 30,
+            'status' => 'active'
+        ]);
+
+        $response->assertStatus(201);
+    }
+
+    /** @test */
     public function it_can_show_a_supplier()
     {
         $supplier = Supplier::factory()->create();
@@ -206,6 +259,7 @@ class SupplierApiTest extends TestCase
 
         $updateData = [
             'name' => 'Updated Supplier Name',
+            'code' => 'SUP999',
             'contact_person' => 'Jane Smith',
             'payment_terms' => 45,
             'status' => 'inactive'
@@ -258,12 +312,18 @@ class SupplierApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    'supplier_id',
-                    'total_orders',
-                    'total_amount',
-                    'average_order_value',
-                    'on_time_delivery_rate',
-                    'quality_rating'
+                    'supplier' => [
+                        'id',
+                        'name',
+                        'status'
+                    ],
+                    'metrics' => [
+                        'total_orders',
+                        'total_value',
+                        'on_time_delivery_rate',
+                        'quality_rating',
+                        'last_order_date'
+                    ]
                 ]
             ]);
     }

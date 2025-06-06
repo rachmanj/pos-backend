@@ -171,6 +171,9 @@ class InventoryPermissionsTest extends TestCase
 
         $response = $this->postJson('/api/suppliers', [
             'name' => 'Test Supplier',
+            'code' => 'SUP001',
+            'email' => 'test@supplier.com',
+            'payment_terms' => 30,
             'status' => 'active'
         ]);
         $response->assertStatus(201);
@@ -197,6 +200,9 @@ class InventoryPermissionsTest extends TestCase
 
         $response = $this->postJson('/api/suppliers', [
             'name' => 'Test Supplier',
+            'code' => 'SUP002',
+            'email' => 'test2@supplier.com',
+            'payment_terms' => 30,
             'status' => 'active'
         ]);
         $response->assertStatus(403);

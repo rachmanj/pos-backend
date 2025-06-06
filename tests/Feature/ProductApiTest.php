@@ -270,7 +270,10 @@ class ProductApiTest extends TestCase
         $response = $this->putJson("/api/products/{$product->id}", array_merge([
             'sku' => $product->sku,
             'unit_id' => $this->unit->id,
+            'cost_price' => 150.00,
             'selling_price' => 199.99,
+            'min_stock_level' => 5,
+            'tax_rate' => 10.0,
             'status' => 'inactive'
         ], $updateData));
 

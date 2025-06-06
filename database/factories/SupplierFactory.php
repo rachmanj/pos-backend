@@ -18,10 +18,13 @@ class SupplierFactory extends Factory
     {
         return [
             'name' => $this->faker->company(),
+            'code' => $this->faker->unique()->regexify('SUP[0-9]{4}'),
             'contact_person' => $this->faker->name(),
             'email' => $this->faker->unique()->companyEmail(),
             'phone' => $this->faker->phoneNumber(),
             'address' => $this->faker->address(),
+            'city' => $this->faker->city(),
+            'country' => $this->faker->country(),
             'tax_number' => $this->faker->optional()->regexify('TAX[0-9]{9}'),
             'payment_terms' => $this->faker->randomElement([15, 30, 45, 60]),
             'status' => $this->faker->randomElement(['active', 'inactive']),

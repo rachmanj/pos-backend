@@ -28,38 +28,29 @@ class RolePermissionSeeder extends Seeder
 
             // Inventory Management
             'view inventory',
-            'create products',
-            'edit products',
-            'delete products',
-            'manage stock',
+            'manage inventory',
             'view stock movements',
 
-            // Purchasing
-            'view suppliers',
-            'create suppliers',
-            'edit suppliers',
-            'delete suppliers',
-            'view purchase orders',
-            'create purchase orders',
-            'edit purchase orders',
-            'delete purchase orders',
+            // Purchasing Management
+            'view purchasing',
+            'manage purchasing',
+            'approve purchase orders',
             'receive goods',
+            'approve purchase receipts',
 
-            // Sales
+            // Sales Management
             'view sales',
-            'create sales',
-            'edit sales',
-            'delete sales',
+            'manage sales',
             'process payments',
             'manage cash sessions',
             'view pos',
 
-            // Reports
+            // Reports & Analytics
             'view reports',
             'export reports',
             'view analytics',
 
-            // System
+            // System Administration
             'manage settings',
             'view audit logs',
         ];
@@ -70,11 +61,11 @@ class RolePermissionSeeder extends Seeder
 
         // Create roles and assign permissions
 
-        // Super Admin - Full access
+        // Super Admin - Full access to everything
         $superAdmin = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdmin->syncPermissions(Permission::all());
 
-        // Manager - Store operations, reports, user management
+        // Manager - Full operational access except system settings
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $manager->syncPermissions([
             'view users',
@@ -82,20 +73,15 @@ class RolePermissionSeeder extends Seeder
             'edit users',
             'assign roles',
             'view inventory',
-            'create products',
-            'edit products',
-            'manage stock',
+            'manage inventory',
             'view stock movements',
-            'view suppliers',
-            'create suppliers',
-            'edit suppliers',
-            'view purchase orders',
-            'create purchase orders',
-            'edit purchase orders',
+            'view purchasing',
+            'manage purchasing',
+            'approve purchase orders',
             'receive goods',
+            'approve purchase receipts',
             'view sales',
-            'create sales',
-            'edit sales',
+            'manage sales',
             'process payments',
             'manage cash sessions',
             'view pos',
@@ -104,28 +90,69 @@ class RolePermissionSeeder extends Seeder
             'view analytics',
         ]);
 
-        // Cashier - Sales transactions, basic inventory viewing
+        // Purchasing Manager - Specialized for purchasing operations
+        $purchasingManager = Role::firstOrCreate(['name' => 'purchasing-manager']);
+        $purchasingManager->syncPermissions([
+            'view inventory',
+            'view purchasing',
+            'manage purchasing',
+            'approve purchase orders',
+            'receive goods',
+            'approve purchase receipts',
+            'view reports',
+            'view analytics',
+        ]);
+
+        // Warehouse Supervisor - Inventory and receiving focused
+        $warehouseSupervisor = Role::firstOrCreate(['name' => 'warehouse-supervisor']);
+        $warehouseSupervisor->syncPermissions([
+            'view inventory',
+            'manage inventory',
+            'view stock movements',
+            'view purchasing',
+            'receive goods',
+            'approve purchase receipts',
+            'view reports',
+        ]);
+
+        // Cashier - Point of sale operations
         $cashier = Role::firstOrCreate(['name' => 'cashier']);
         $cashier->syncPermissions([
             'view inventory',
             'view sales',
-            'create sales',
+            'manage sales',
             'process payments',
             'manage cash sessions',
             'view pos',
         ]);
 
-        // Stock Clerk - Inventory management, receiving purchases
+        // Stock Clerk - Basic inventory and receiving
         $stockClerk = Role::firstOrCreate(['name' => 'stock-clerk']);
         $stockClerk->syncPermissions([
             'view inventory',
-            'create products',
-            'edit products',
-            'manage stock',
+            'manage inventory',
             'view stock movements',
-            'view suppliers',
-            'view purchase orders',
+            'view purchasing',
             'receive goods',
+        ]);
+
+        // Purchasing Clerk - Purchase order creation and management
+        $purchasingClerk = Role::firstOrCreate(['name' => 'purchasing-clerk']);
+        $purchasingClerk->syncPermissions([
+            'view inventory',
+            'view purchasing',
+            'manage purchasing',
+            'receive goods',
+        ]);
+
+        // Sales Associate - Basic sales operations
+        $salesAssociate = Role::firstOrCreate(['name' => 'sales-associate']);
+        $salesAssociate->syncPermissions([
+            'view inventory',
+            'view sales',
+            'manage sales',
+            'process payments',
+            'view pos',
         ]);
     }
 }

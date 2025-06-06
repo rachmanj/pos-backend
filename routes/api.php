@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\UnitController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\StockMovementController;
+use App\Http\Controllers\Api\PurchaseOrderController;
+use App\Http\Controllers\Api\PurchaseReceiptController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -166,6 +168,51 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('inventory/stock-levels', [ProductController::class, 'stockLevels']);
         Route::get('inventory/stock-alerts', [ProductController::class, 'stockAlerts']);
         Route::get('inventory/valuation', [ProductController::class, 'valuation']);
+    });
+
+    // Purchasing Management Routes
+
+    // Purchase Orders - view access for purchasing viewers
+    Route::middleware('permission:view purchasing|manage purchasing|approve purchase orders')->group(function () {
+        Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::get('purchase-orders/analytics', [PurchaseOrderController::class, 'analytics']);
+        Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
+    });
+
+    // Purchase Orders - management access
+    Route::middleware('permission:manage purchasing')->group(function () {
+        Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::put('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);
+        Route::delete('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+        Route::post('purchase-orders/{purchaseOrder}/submit-for-approval', [PurchaseOrderController::class, 'submitForApproval']);
+        Route::post('purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel']);
+        Route::post('purchase-orders/{purchaseOrder}/duplicate', [PurchaseOrderController::class, 'duplicate']);
+    });
+
+    // Purchase Orders - approval access
+    Route::middleware('permission:approve purchase orders')->group(function () {
+        Route::post('purchase-orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve']);
+    });
+
+    // Purchase Receipts - view access for purchasing and warehouse staff
+    Route::middleware('permission:view purchasing|manage purchasing|receive goods')->group(function () {
+        Route::get('purchase-receipts', [PurchaseReceiptController::class, 'index']);
+        Route::get('purchase-receipts/analytics', [PurchaseReceiptController::class, 'analytics']);
+        Route::get('purchase-receipts/{purchaseReceipt}', [PurchaseReceiptController::class, 'show']);
+        Route::get('purchase-orders/{purchaseOrder}/receivable-items', [PurchaseReceiptController::class, 'getReceivableItems']);
+    });
+
+    // Purchase Receipts - management and receiving
+    Route::middleware('permission:receive goods|manage purchasing')->group(function () {
+        Route::post('purchase-receipts', [PurchaseReceiptController::class, 'store']);
+        Route::put('purchase-receipts/{purchaseReceipt}', [PurchaseReceiptController::class, 'update']);
+        Route::delete('purchase-receipts/{purchaseReceipt}', [PurchaseReceiptController::class, 'destroy']);
+    });
+
+    // Purchase Receipts - approval and stock update
+    Route::middleware('permission:approve purchase receipts|manage inventory')->group(function () {
+        Route::post('purchase-receipts/{purchaseReceipt}/approve', [PurchaseReceiptController::class, 'approve']);
+        Route::post('purchase-receipts/{purchaseReceipt}/update-stock', [PurchaseReceiptController::class, 'updateStock']);
     });
 
     // Legacy user route for backward compatibility

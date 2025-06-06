@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
@@ -12,10 +13,13 @@ class Supplier extends Model
 
     protected $fillable = [
         'name',
+        'code',
         'contact_person',
         'email',
         'phone',
         'address',
+        'city',
+        'country',
         'tax_number',
         'payment_terms',
         'status',
@@ -26,6 +30,18 @@ class Supplier extends Model
         'status' => 'string',
     ];
 
+    // Relationships
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function activePurchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class)->whereNotIn('status', ['cancelled']);
+    }
+
+    // Scopes
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
@@ -41,6 +57,7 @@ class Supplier extends Model
         });
     }
 
+    // Accessors
     public function getDisplayNameAttribute(): string
     {
         return $this->contact_person
@@ -60,8 +77,19 @@ class Supplier extends Model
             : "{$this->payment_terms} days";
     }
 
+    // Helper methods
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function getTotalPurchaseOrdersCount(): int
+    {
+        return $this->purchaseOrders()->count();
+    }
+
+    public function getActivePurchaseOrdersCount(): int
+    {
+        return $this->activePurchaseOrders()->count();
     }
 }

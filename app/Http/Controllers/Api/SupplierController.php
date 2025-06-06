@@ -44,7 +44,7 @@ class SupplierController extends Controller
 
         return response()->json([
             'data' => SupplierResource::collection($suppliers->items()),
-            'meta' => [
+            'pagination' => [
                 'current_page' => $suppliers->currentPage(),
                 'from' => $suppliers->firstItem(),
                 'last_page' => $suppliers->lastPage(),
