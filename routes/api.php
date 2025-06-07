@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\ReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -364,6 +365,33 @@ Route::middleware('auth:sanctum')->group(function () {
     // Sales/POS - void access (restricted)
     Route::middleware('permission:void sales|manage sales')->group(function () {
         Route::post('sales/{sale}/void', [SaleController::class, 'void']);
+    });
+
+    // Advanced Reporting & Analytics Routes
+
+    // Dashboard Analytics - accessible to managers and above
+    Route::middleware('permission:view reports|manage reports|view dashboard')->group(function () {
+        Route::get('reports/dashboard', [ReportController::class, 'dashboard']);
+    });
+
+    // Sales Analytics - accessible to sales managers and above
+    Route::middleware('permission:view reports|manage reports|view sales analytics')->group(function () {
+        Route::get('reports/sales-analytics', [ReportController::class, 'salesAnalytics']);
+    });
+
+    // Inventory Analytics - accessible to inventory managers and above
+    Route::middleware('permission:view reports|manage reports|view inventory analytics')->group(function () {
+        Route::get('reports/inventory-analytics', [ReportController::class, 'inventoryAnalytics']);
+    });
+
+    // Purchasing Analytics - accessible to purchasing managers and above
+    Route::middleware('permission:view reports|manage reports|view purchasing analytics')->group(function () {
+        Route::get('reports/purchasing-analytics', [ReportController::class, 'purchasingAnalytics']);
+    });
+
+    // Financial Reports - accessible to financial managers and above
+    Route::middleware('permission:view reports|manage reports|view financial reports')->group(function () {
+        Route::get('reports/financial-reports', [ReportController::class, 'financialReports']);
     });
 
     // Legacy user route for backward compatibility

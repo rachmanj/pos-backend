@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class SaleItem extends Model
 {
@@ -90,59 +91,79 @@ class SaleItem extends Model
         return $this->belongsTo(Unit::class);
     }
 
-    // Accessors
-    public function getNetQuantityAttribute(): float
+    // Accessors (Laravel 11+ style)
+    protected function netQuantity(): Attribute
     {
-        return $this->quantity - $this->returned_quantity;
+        return Attribute::make(
+            get: fn() => $this->quantity - $this->returned_quantity,
+        );
     }
 
-    public function getNetAmountAttribute(): float
+    protected function netAmount(): Attribute
     {
-        return $this->line_total - $this->refunded_amount;
+        return Attribute::make(
+            get: fn() => $this->line_total - $this->refunded_amount,
+        );
     }
 
-    public function getDiscountAmountAttribute(): float
+    protected function discountAmount(): Attribute
     {
-        return $this->line_discount_amount +
-            (($this->line_subtotal * $this->line_discount_percentage) / 100);
+        return Attribute::make(
+            get: fn() => $this->line_discount_amount +
+                (($this->line_subtotal * $this->line_discount_percentage) / 100),
+        );
     }
 
-    public function getFinalUnitPriceAttribute(): float
+    protected function finalUnitPrice(): Attribute
     {
-        return $this->quantity > 0 ? $this->line_total / $this->quantity : 0;
+        return Attribute::make(
+            get: fn() => $this->quantity > 0 ? $this->line_total / $this->quantity : 0,
+        );
     }
 
-    public function getProfitMarginAttribute(): float
+    protected function profitMargin(): Attribute
     {
-        return $this->line_total > 0 ?
-            ($this->gross_profit / $this->line_total) * 100 : 0;
+        return Attribute::make(
+            get: fn() => $this->line_total > 0 ?
+                ($this->gross_profit / $this->line_total) * 100 : 0,
+        );
     }
 
-    public function getIsPartiallyReturnedAttribute(): bool
+    protected function isPartiallyReturned(): Attribute
     {
-        return $this->returned_quantity > 0 && $this->returned_quantity < $this->quantity;
+        return Attribute::make(
+            get: fn() => $this->returned_quantity > 0 && $this->returned_quantity < $this->quantity,
+        );
     }
 
-    public function getIsFullyReturnedAttribute(): bool
+    protected function isFullyReturned(): Attribute
     {
-        return $this->returned_quantity >= $this->quantity;
+        return Attribute::make(
+            get: fn() => $this->returned_quantity >= $this->quantity,
+        );
     }
 
-    public function getCanReturnAttribute(): bool
+    protected function canReturn(): Attribute
     {
-        return $this->is_returnable &&
-            $this->returned_quantity < $this->quantity &&
-            $this->sale->status === 'completed';
+        return Attribute::make(
+            get: fn() => $this->is_returnable &&
+                $this->returned_quantity < $this->quantity &&
+                $this->sale->status === 'completed',
+        );
     }
 
-    public function getRemainingReturnQuantityAttribute(): float
+    protected function remainingReturnQuantity(): Attribute
     {
-        return max(0, $this->quantity - $this->returned_quantity);
+        return Attribute::make(
+            get: fn() => max(0, $this->quantity - $this->returned_quantity),
+        );
     }
 
-    public function getRemainingReturnAmountAttribute(): float
+    protected function remainingReturnAmount(): Attribute
     {
-        return max(0, $this->line_total - $this->refunded_amount);
+        return Attribute::make(
+            get: fn() => max(0, $this->line_total - $this->refunded_amount),
+        );
     }
 
     // Business Logic Methods
@@ -167,7 +188,8 @@ class SaleItem extends Model
         $totalCost = $this->quantity * $this->cost_price;
         $grossProfit = $total - $totalCost;
 
-        $this->update([
+        // Use updateQuietly to avoid triggering events and prevent infinite loops
+        $this->updateQuietly([
             'line_subtotal' => $subtotal,
             'line_discount_amount' => $discountAmount,
             'line_tax_amount' => $taxAmount,
@@ -177,7 +199,7 @@ class SaleItem extends Model
         ]);
     }
 
-    public function applyDiscount(float $percentage = 0, float $amount = 0, string $type = null, string $reason = null): void
+    public function applyDiscount(float $percentage = 0, float $amount = 0, ?string $type = null, ?string $reason = null): void
     {
         $this->update([
             'line_discount_percentage' => $percentage,
@@ -219,7 +241,7 @@ class SaleItem extends Model
     protected function returnToStock(float $quantity): void
     {
         // Add back to warehouse stock
-        $warehouseStock = WarehouseStock::where('warehouse_id', $this->sale->warehouse_id)
+        $warehouseStock = \App\Models\WarehouseStock::where('warehouse_id', $this->sale->warehouse_id)
             ->where('product_id', $this->product_id)
             ->first();
 
@@ -229,7 +251,7 @@ class SaleItem extends Model
         }
 
         // Create stock movement
-        StockMovement::create([
+        \App\Models\StockMovement::create([
             'product_id' => $this->product_id,
             'warehouse_id' => $this->sale->warehouse_id,
             'movement_type' => 'in',
@@ -238,7 +260,7 @@ class SaleItem extends Model
             'reference_type' => 'return',
             'reference_id' => $this->sale->id,
             'notes' => "Return from sale: {$this->sale->sale_number}",
-            'user_id' => auth()?->id(),
+            'user_id' => \Illuminate\Support\Facades\Auth::id(),
         ]);
     }
 
@@ -263,7 +285,7 @@ class SaleItem extends Model
 
     public function checkStockAvailability(): bool
     {
-        $warehouseStock = WarehouseStock::where('warehouse_id', $this->sale->warehouse_id)
+        $warehouseStock = \App\Models\WarehouseStock::where('warehouse_id', $this->sale->warehouse_id)
             ->where('product_id', $this->product_id)
             ->first();
 
@@ -272,7 +294,7 @@ class SaleItem extends Model
 
     public function getStockShortage(): float
     {
-        $warehouseStock = WarehouseStock::where('warehouse_id', $this->sale->warehouse_id)
+        $warehouseStock = \App\Models\WarehouseStock::where('warehouse_id', $this->sale->warehouse_id)
             ->where('product_id', $this->product_id)
             ->first();
 
@@ -326,11 +348,9 @@ class SaleItem extends Model
         return $query->whereNotNull('serial_number');
     }
 
-    // Events
-    protected static function boot()
+    // Events (Laravel 11+ style)
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($saleItem) {
             $saleItem->calculateLineTotals();
         });

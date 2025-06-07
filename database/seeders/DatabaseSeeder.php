@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call(InventoryPermissionsSeeder::class);
         $this->call(WarehousePermissionsSeeder::class);
         $this->call(SalesPermissionsSeeder::class);
+        $this->call(ReportsPermissionsSeeder::class);
 
         // Seed sales-related data
         $this->call(PaymentMethodSeeder::class);
