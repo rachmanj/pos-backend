@@ -25,6 +25,11 @@ class PurchaseOrder extends Model
         'subtotal',
         'tax_amount',
         'total_amount',
+        'paid_amount',
+        'outstanding_amount',
+        'payment_status',
+        'payment_terms',
+        'due_date',
         'notes',
         'terms_conditions',
     ];
@@ -33,9 +38,12 @@ class PurchaseOrder extends Model
         'order_date' => 'date',
         'expected_delivery_date' => 'date',
         'approved_date' => 'date',
+        'due_date' => 'date',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'outstanding_amount' => 'decimal:2',
     ];
 
     // Relationships
@@ -62,6 +70,16 @@ class PurchaseOrder extends Model
     public function receipts(): HasMany
     {
         return $this->hasMany(PurchaseReceipt::class);
+    }
+
+    public function paymentAllocations(): HasMany
+    {
+        return $this->hasMany(PurchasePaymentAllocation::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(PurchasePayment::class);
     }
 
     // Scopes
@@ -125,6 +143,40 @@ class PurchaseOrder extends Model
         return 'Rp ' . number_format($this->tax_amount, 0, ',', '.');
     }
 
+    public function getFormattedPaidAmountAttribute(): string
+    {
+        return 'Rp ' . number_format($this->paid_amount, 0, ',', '.');
+    }
+
+    public function getFormattedOutstandingAmountAttribute(): string
+    {
+        return 'Rp ' . number_format($this->outstanding_amount, 0, ',', '.');
+    }
+
+    public function getPaymentStatusBadgeAttribute(): string
+    {
+        return match ($this->payment_status) {
+            'unpaid' => 'destructive',
+            'partial' => 'warning',
+            'paid' => 'success',
+            'overpaid' => 'secondary',
+            default => 'secondary',
+        };
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        return $this->due_date && $this->due_date->isPast() && $this->outstanding_amount > 0;
+    }
+
+    public function getDaysOverdueAttribute(): ?int
+    {
+        if (!$this->is_overdue) {
+            return null;
+        }
+        return $this->due_date->diffInDays(now());
+    }
+
     // Helper methods
     public function canBeEdited(): bool
     {
@@ -156,7 +208,50 @@ class PurchaseOrder extends Model
         $this->subtotal = $this->items->sum('total_price');
         $this->tax_amount = $this->subtotal * 0.11; // 11% PPN
         $this->total_amount = $this->subtotal + $this->tax_amount;
+
+        // Initialize payment fields if not set
+        if (is_null($this->outstanding_amount)) {
+            $this->outstanding_amount = $this->total_amount;
+            $this->paid_amount = 0;
+            $this->payment_status = 'unpaid';
+        }
+
+        // Set due date based on supplier payment terms
+        if (is_null($this->due_date) && $this->supplier) {
+            $this->due_date = $this->supplier->getDueDateForNewOrder();
+            $this->payment_terms = $this->supplier->payment_terms . ' days';
+        }
+
         $this->save();
+    }
+
+    public function updatePaymentStatus(): void
+    {
+        // Calculate total paid amount from allocations
+        $totalPaid = $this->paymentAllocations()
+            ->whereHas('purchasePayment', function ($query) {
+                $query->where('status', 'completed');
+            })
+            ->sum('allocated_amount');
+
+        $this->paid_amount = $totalPaid;
+        $this->outstanding_amount = $this->total_amount - $totalPaid;
+
+        // Determine payment status
+        if ($totalPaid == 0) {
+            $this->payment_status = 'unpaid';
+        } elseif ($totalPaid < $this->total_amount) {
+            $this->payment_status = 'partial';
+        } elseif ($totalPaid == $this->total_amount) {
+            $this->payment_status = 'paid';
+        } else {
+            $this->payment_status = 'overpaid';
+        }
+
+        $this->save();
+
+        // Update supplier balance
+        $this->supplier->updateBalance();
     }
 
     public function approve(User $approver): bool

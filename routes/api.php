@@ -10,14 +10,21 @@ use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\PurchaseReceiptController;
+use App\Http\Controllers\Api\PurchasePaymentController;
 use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\WarehouseZoneController;
 use App\Http\Controllers\Api\WarehouseStockController;
 use App\Http\Controllers\Api\StockTransferController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\CustomerCrmController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\CustomerPaymentReceiveController;
+use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\DeliveryOrderController;
+use App\Http\Controllers\SalesInvoiceController;
+use App\Http\Controllers\DeliveryRouteController;
 use App\Http\Controllers\Api\ReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -224,6 +231,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('purchase-receipts/{purchaseReceipt}/update-stock', [PurchaseReceiptController::class, 'updateStock']);
     });
 
+    // Purchase Payments - view access for purchasing and finance staff
+    Route::middleware('permission:view purchasing|manage purchasing|view payments')->group(function () {
+        Route::get('purchase-payments', [PurchasePaymentController::class, 'index']);
+        Route::get('purchase-payments/stats', [PurchasePaymentController::class, 'getPaymentStats']);
+        Route::get('purchase-payments/{purchasePayment}', [PurchasePaymentController::class, 'show']);
+        Route::get('purchase-payments/suppliers/{supplier}/outstanding-orders', [PurchasePaymentController::class, 'getSupplierOutstandingOrders']);
+        Route::get('purchase-payments/payment-methods', [PurchasePaymentController::class, 'getPaymentMethods']);
+        Route::get('purchase-payments/suppliers', [PurchasePaymentController::class, 'getSuppliers']);
+    });
+
+    // Purchase Payments - management access
+    Route::middleware('permission:manage purchasing|manage payments')->group(function () {
+        Route::post('purchase-payments', [PurchasePaymentController::class, 'store']);
+        Route::put('purchase-payments/{purchasePayment}', [PurchasePaymentController::class, 'update']);
+        Route::delete('purchase-payments/{purchasePayment}', [PurchasePaymentController::class, 'destroy']);
+    });
+
+    // Purchase Payments - approval access
+    Route::middleware('permission:approve payments|manage purchasing')->group(function () {
+        Route::post('purchase-payments/{purchasePayment}/approve', [PurchasePaymentController::class, 'approve']);
+    });
+
     // Warehouse Management Routes
 
     // Warehouses - view access for inventory and warehouse staff
@@ -320,6 +349,56 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('customers/{customer}', [CustomerController::class, 'destroy']);
     });
 
+    // Enhanced CRM Management Routes
+
+    // Customer CRM - view access for sales, customer service, and management staff
+    Route::middleware('permission:view customers|manage customers|view customer contacts|view customer addresses|view customer notes|view customer loyalty')->group(function () {
+        Route::get('customers-crm', [CustomerCrmController::class, 'index']);
+        Route::get('customers-crm/analytics', [CustomerCrmController::class, 'analytics']);
+        Route::get('customers-crm/dropdown-data', [CustomerCrmController::class, 'getDropdownData']);
+        Route::get('customers-crm/{customer}', [CustomerCrmController::class, 'show']);
+        Route::get('customers-crm/{customer}/contacts', [CustomerCrmController::class, 'getContacts']);
+        Route::get('customers-crm/{customer}/addresses', [CustomerCrmController::class, 'getAddresses']);
+        Route::get('customers-crm/{customer}/notes', [CustomerCrmController::class, 'getNotes']);
+        Route::get('customers-crm/{customer}/loyalty-points', [CustomerCrmController::class, 'getLoyaltyPoints']);
+    });
+
+    // Customer CRM - management access
+    Route::middleware('permission:manage customers')->group(function () {
+        Route::post('customers-crm', [CustomerCrmController::class, 'store']);
+        Route::put('customers-crm/{customer}', [CustomerCrmController::class, 'update']);
+        Route::delete('customers-crm/{customer}', [CustomerCrmController::class, 'destroy']);
+        Route::post('customers-crm/{customer}/blacklist', [CustomerCrmController::class, 'blacklistCustomer']);
+        Route::post('customers-crm/{customer}/unblacklist', [CustomerCrmController::class, 'unblacklistCustomer']);
+    });
+
+    // Customer Contacts - management access
+    Route::middleware('permission:manage customer contacts')->group(function () {
+        Route::post('customers-crm/{customer}/contacts', [CustomerCrmController::class, 'storeContact']);
+        Route::put('customers-crm/{customer}/contacts/{contact}', [CustomerCrmController::class, 'updateContact']);
+        Route::delete('customers-crm/{customer}/contacts/{contact}', [CustomerCrmController::class, 'destroyContact']);
+    });
+
+    // Customer Addresses - management access
+    Route::middleware('permission:manage customer addresses')->group(function () {
+        Route::post('customers-crm/{customer}/addresses', [CustomerCrmController::class, 'storeAddress']);
+        Route::put('customers-crm/{customer}/addresses/{address}', [CustomerCrmController::class, 'updateAddress']);
+        Route::delete('customers-crm/{customer}/addresses/{address}', [CustomerCrmController::class, 'destroyAddress']);
+    });
+
+    // Customer Notes - management access
+    Route::middleware('permission:manage customer notes')->group(function () {
+        Route::post('customers-crm/{customer}/notes', [CustomerCrmController::class, 'storeNote']);
+        Route::put('customers-crm/{customer}/notes/{note}', [CustomerCrmController::class, 'updateNote']);
+        Route::delete('customers-crm/{customer}/notes/{note}', [CustomerCrmController::class, 'destroyNote']);
+    });
+
+    // Customer Loyalty Points - management access
+    Route::middleware('permission:manage customer loyalty')->group(function () {
+        Route::post('customers-crm/{customer}/loyalty-points/adjust', [CustomerCrmController::class, 'adjustLoyaltyPoints']);
+        Route::post('customers-crm/{customer}/loyalty-points/redeem', [CustomerCrmController::class, 'redeemLoyaltyPoints']);
+    });
+
     // Payment Methods - view access for sales staff
     Route::middleware('permission:process sales|manage sales|view payment methods')->group(function () {
         Route::get('payment-methods', [PaymentMethodController::class, 'index']);
@@ -365,6 +444,141 @@ Route::middleware('auth:sanctum')->group(function () {
     // Sales/POS - void access (restricted)
     Route::middleware('permission:void sales|manage sales')->group(function () {
         Route::post('sales/{sale}/void', [SaleController::class, 'void']);
+    });
+
+    // Sales Payment Receive (Accounts Receivable) Routes
+
+    // Customer Payment Receives - view access for finance and sales staff
+    Route::middleware('permission:view ar payments|manage ar payments|view sales|manage sales')->group(function () {
+        Route::get('customer-payment-receives', [CustomerPaymentReceiveController::class, 'index']);
+        Route::get('customer-payment-receives/dashboard', [CustomerPaymentReceiveController::class, 'getDashboard']);
+        Route::get('customer-payment-receives/{customerPaymentReceive}', [CustomerPaymentReceiveController::class, 'show']);
+        Route::get('customers/{customer}/outstanding', [CustomerPaymentReceiveController::class, 'getCustomerOutstanding']);
+        Route::get('ar-aging-report', [CustomerPaymentReceiveController::class, 'getAgingReport']);
+    });
+
+    // Customer Payment Receives - create and process access
+    Route::middleware('permission:manage ar payments|process ar payments')->group(function () {
+        Route::post('customer-payment-receives', [CustomerPaymentReceiveController::class, 'store']);
+        Route::put('customer-payment-receives/{customerPaymentReceive}', [CustomerPaymentReceiveController::class, 'update']);
+        Route::post('customer-payment-receives/{customerPaymentReceive}/allocate', [CustomerPaymentReceiveController::class, 'allocatePayment']);
+        Route::post('customer-payment-receives/{customerPaymentReceive}/auto-allocate', [CustomerPaymentReceiveController::class, 'autoAllocate']);
+    });
+
+    // Customer Payment Receives - verification and approval access
+    Route::middleware('permission:verify ar payments|approve ar payments')->group(function () {
+        Route::post('customer-payment-receives/{customerPaymentReceive}/verify', [CustomerPaymentReceiveController::class, 'verify']);
+        Route::post('customer-payment-receives/{customerPaymentReceive}/approve', [CustomerPaymentReceiveController::class, 'approve']);
+        Route::post('customer-payment-receives/{customerPaymentReceive}/reject', [CustomerPaymentReceiveController::class, 'reject']);
+    });
+
+    // Customer Payment Receives - delete access (restricted)
+    Route::middleware('permission:delete ar payments')->group(function () {
+        Route::delete('customer-payment-receives/{customerPaymentReceive}', [CustomerPaymentReceiveController::class, 'destroy']);
+    });
+
+    // Sales Order Management Routes
+
+    // Sales Orders - view access for sales staff and managers
+    Route::middleware('permission:view sales orders|manage sales orders|process sales orders')->group(function () {
+        Route::get('sales-orders', [SalesOrderController::class, 'index']);
+        Route::get('sales-orders/stats', [SalesOrderController::class, 'stats']);
+        Route::get('sales-orders/customers', [SalesOrderController::class, 'customers']);
+        Route::get('sales-orders/products', [SalesOrderController::class, 'products']);
+        Route::get('sales-orders/warehouses', [SalesOrderController::class, 'warehouses']);
+        Route::get('sales-orders/sales-reps', [SalesOrderController::class, 'salesReps']);
+        Route::get('sales-orders/{salesOrder}', [SalesOrderController::class, 'show']);
+    });
+
+    // Sales Orders - create and edit access
+    Route::middleware('permission:manage sales orders|process sales orders')->group(function () {
+        Route::post('sales-orders', [SalesOrderController::class, 'store']);
+        Route::put('sales-orders/{salesOrder}', [SalesOrderController::class, 'update']);
+        Route::post('sales-orders/{salesOrder}/confirm', [SalesOrderController::class, 'confirm']);
+    });
+
+    // Sales Orders - approval access
+    Route::middleware('permission:approve sales orders|manage sales orders')->group(function () {
+        Route::post('sales-orders/{salesOrder}/approve', [SalesOrderController::class, 'approve']);
+    });
+
+    // Sales Orders - cancellation access
+    Route::middleware('permission:cancel sales orders|manage sales orders')->group(function () {
+        Route::post('sales-orders/{salesOrder}/cancel', [SalesOrderController::class, 'cancel']);
+    });
+
+    // Sales Orders - delete access (restricted)
+    Route::middleware('permission:delete sales orders')->group(function () {
+        Route::delete('sales-orders/{salesOrder}', [SalesOrderController::class, 'destroy']);
+    });
+
+    // Delivery Orders - view access for warehouse and delivery staff
+    Route::middleware('permission:view delivery orders|manage delivery orders|process deliveries')->group(function () {
+        Route::get('delivery-orders', [DeliveryOrderController::class, 'index']);
+        Route::get('delivery-orders/stats', [DeliveryOrderController::class, 'stats']);
+        Route::get('delivery-orders/drivers', [DeliveryOrderController::class, 'drivers']);
+        Route::get('delivery-orders/available-sales-orders', [DeliveryOrderController::class, 'availableSalesOrders']);
+        Route::get('delivery-orders/{deliveryOrder}', [DeliveryOrderController::class, 'show']);
+    });
+
+    // Delivery Orders - create and edit access
+    Route::middleware('permission:manage delivery orders|process deliveries')->group(function () {
+        Route::post('delivery-orders', [DeliveryOrderController::class, 'store']);
+        Route::put('delivery-orders/{deliveryOrder}', [DeliveryOrderController::class, 'update']);
+    });
+
+    // Delivery Orders - shipping and delivery processing
+    Route::middleware('permission:process deliveries|manage deliveries')->group(function () {
+        Route::post('delivery-orders/{deliveryOrder}/ship', [DeliveryOrderController::class, 'ship']);
+        Route::post('delivery-orders/{deliveryOrder}/deliver', [DeliveryOrderController::class, 'deliver']);
+        Route::post('delivery-orders/{deliveryOrder}/fail', [DeliveryOrderController::class, 'fail']);
+    });
+
+    // Sales Invoices - view access for finance and sales staff
+    Route::middleware('permission:view sales invoices|manage sales invoices|process invoices')->group(function () {
+        Route::get('sales-invoices', [SalesInvoiceController::class, 'index']);
+        Route::get('sales-invoices/stats', [SalesInvoiceController::class, 'stats']);
+        Route::get('sales-invoices/available-delivery-orders', [SalesInvoiceController::class, 'availableDeliveryOrders']);
+        Route::get('sales-invoices/{salesInvoice}', [SalesInvoiceController::class, 'show']);
+    });
+
+    // Sales Invoices - create and edit access
+    Route::middleware('permission:manage sales invoices|process invoices')->group(function () {
+        Route::post('sales-invoices', [SalesInvoiceController::class, 'store']);
+        Route::put('sales-invoices/{salesInvoice}', [SalesInvoiceController::class, 'update']);
+        Route::post('sales-invoices/generate-from-delivery', [SalesInvoiceController::class, 'generateFromDelivery']);
+    });
+
+    // Sales Invoices - send access
+    Route::middleware('permission:send sales invoices|manage sales invoices')->group(function () {
+        Route::post('sales-invoices/{salesInvoice}/send', [SalesInvoiceController::class, 'send']);
+    });
+
+    // Sales Invoices - delete access (restricted)
+    Route::middleware('permission:delete sales invoices')->group(function () {
+        Route::delete('sales-invoices/{salesInvoice}', [SalesInvoiceController::class, 'destroy']);
+    });
+
+    // Delivery Routes - view access for warehouse and delivery staff
+    Route::middleware('permission:view delivery routes|manage delivery routes|plan routes')->group(function () {
+        Route::get('delivery-routes', [DeliveryRouteController::class, 'index']);
+        Route::get('delivery-routes/stats', [DeliveryRouteController::class, 'stats']);
+        Route::get('delivery-routes/unassigned-delivery-orders', [DeliveryRouteController::class, 'unassignedDeliveryOrders']);
+        Route::get('delivery-routes/{deliveryRoute}', [DeliveryRouteController::class, 'show']);
+    });
+
+    // Delivery Routes - create and edit access
+    Route::middleware('permission:manage delivery routes|plan routes')->group(function () {
+        Route::post('delivery-routes', [DeliveryRouteController::class, 'store']);
+        Route::put('delivery-routes/{deliveryRoute}', [DeliveryRouteController::class, 'update']);
+        Route::post('delivery-routes/{deliveryRoute}/optimize', [DeliveryRouteController::class, 'optimize']);
+    });
+
+    // Delivery Routes - execution access
+    Route::middleware('permission:execute delivery routes|manage delivery routes')->group(function () {
+        Route::post('delivery-routes/{deliveryRoute}/start', [DeliveryRouteController::class, 'start']);
+        Route::post('delivery-routes/{deliveryRoute}/complete', [DeliveryRouteController::class, 'complete']);
+        Route::put('delivery-routes/{deliveryRoute}/stops/{stop}', [DeliveryRouteController::class, 'updateStop']);
     });
 
     // Advanced Reporting & Analytics Routes
