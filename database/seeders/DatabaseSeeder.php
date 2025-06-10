@@ -33,7 +33,7 @@ class DatabaseSeeder extends Seeder
         // Create a super admin user
         $superAdmin = User::factory()->create([
             'name' => 'Super Admin',
-            'email' => 'admin@pos-atk.com',
+            'email' => 'admin@sarange-erp.com',
             'password' => Hash::make('password'),
         ]);
         $superAdmin->assignRole('super-admin');
@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
         // Create a test manager
         $manager = User::factory()->create([
             'name' => 'Manager User',
-            'email' => 'manager@pos-atk.com',
+            'email' => 'manager@sarange-erp.com',
             'password' => Hash::make('password'),
         ]);
         $manager->assignRole('manager');
@@ -49,7 +49,7 @@ class DatabaseSeeder extends Seeder
         // Create a test cashier
         $cashier = User::factory()->create([
             'name' => 'Cashier User',
-            'email' => 'cashier@pos-atk.com',
+            'email' => 'cashier@sarange-erp.com',
             'password' => Hash::make('password'),
         ]);
         $cashier->assignRole('cashier');
