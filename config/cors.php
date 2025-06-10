@@ -27,7 +27,7 @@ return [
         'http://127.0.0.1:3001',
 
         // Production domains - Add your specific domains here
-        'http://116.193.190.186',
+        'http://116.193.190.126',
     ],
 
     'allowed_origins_patterns' => [],
