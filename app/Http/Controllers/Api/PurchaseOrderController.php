@@ -364,4 +364,158 @@ class PurchaseOrderController extends Controller
             'data' => $stats
         ]);
     }
+
+    /**
+     * Download purchase order as PDF
+     */
+    public function downloadPDF(PurchaseOrder $purchaseOrder)
+    {
+        try {
+            // Load relationships needed for PDF
+            $purchaseOrder->load([
+                'supplier',
+                'items.product.unit',
+                'creator',
+                'approver'
+            ]);
+
+            // Generate PDF content
+            $pdf = $this->generatePurchaseOrderPDF($purchaseOrder);
+
+            $filename = "PO-{$purchaseOrder->po_number}.pdf";
+
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Content-Length' => strlen($pdf),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate PDF: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate PDF content for purchase order
+     */
+    private function generatePurchaseOrderPDF(PurchaseOrder $purchaseOrder): string
+    {
+        // Simple HTML to PDF conversion
+        $html = $this->generatePurchaseOrderHTML($purchaseOrder);
+
+        // For now, return HTML content as PDF placeholder
+        // In production, you would use a proper PDF library like DomPDF or wkhtmltopdf
+        return $html;
+    }
+
+    /**
+     * Generate HTML content for purchase order
+     */
+    private function generatePurchaseOrderHTML(PurchaseOrder $purchaseOrder): string
+    {
+        $subtotal = $purchaseOrder->items->sum(function ($item) {
+            return $item->quantity_ordered * $item->unit_price;
+        });
+
+        $html = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='utf-8'>
+            <title>Purchase Order {$purchaseOrder->po_number}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .company-info { margin-bottom: 20px; }
+                .po-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .supplier-info { margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .total-section { text-align: right; margin-top: 20px; }
+                .footer { margin-top: 30px; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class='header'>
+                <h1>PURCHASE ORDER</h1>
+                <h2>Sarange ERP</h2>
+                <p>Enterprise Resource Planning System</p>
+            </div>
+
+            <div class='po-details'>
+                <div>
+                    <strong>PO Number:</strong> {$purchaseOrder->po_number}<br>
+                    <strong>Order Date:</strong> " . date('M d, Y', strtotime($purchaseOrder->order_date)) . "<br>
+                    <strong>Expected Delivery:</strong> " . ($purchaseOrder->expected_delivery_date ? date('M d, Y', strtotime($purchaseOrder->expected_delivery_date)) : 'Not specified') . "
+                </div>
+                <div>
+                    <strong>Status:</strong> " . ucwords(str_replace('_', ' ', $purchaseOrder->status)) . "<br>
+                    <strong>Created By:</strong> {$purchaseOrder->creator->name}<br>
+                    " . ($purchaseOrder->approver ? "<strong>Approved By:</strong> {$purchaseOrder->approver->name}" : '') . "
+                </div>
+            </div>
+
+            <div class='supplier-info'>
+                <h3>Supplier Information</h3>
+                <strong>{$purchaseOrder->supplier->name}</strong><br>
+                Code: {$purchaseOrder->supplier->code}<br>
+                " . ($purchaseOrder->supplier->email ? "Email: {$purchaseOrder->supplier->email}<br>" : '') . "
+                " . ($purchaseOrder->supplier->phone ? "Phone: {$purchaseOrder->supplier->phone}<br>" : '') . "
+                " . ($purchaseOrder->supplier->address ? "Address: {$purchaseOrder->supplier->address}" : '') . "
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>SKU</th>
+                        <th>Unit</th>
+                        <th>Qty Ordered</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>";
+
+        foreach ($purchaseOrder->items as $item) {
+            $itemTotal = $item->quantity_ordered * $item->unit_price;
+            $html .= "
+                    <tr>
+                        <td>{$item->product->name}</td>
+                        <td>{$item->product->sku}</td>
+                        <td>{$item->product->unit->name}</td>
+                        <td>" . number_format($item->quantity_ordered, 2) . "</td>
+                        <td>Rp " . number_format($item->unit_price, 0, ',', '.') . "</td>
+                        <td>Rp " . number_format($itemTotal, 0, ',', '.') . "</td>
+                    </tr>";
+        }
+
+        $html .= "
+                </tbody>
+            </table>
+
+            <div class='total-section'>
+                <p><strong>Subtotal: Rp " . number_format($subtotal, 0, ',', '.') . "</strong></p>
+                <p><strong>Tax: Rp " . number_format($purchaseOrder->tax_amount, 0, ',', '.') . "</strong></p>
+                <p><strong>Total Amount: Rp " . number_format($purchaseOrder->total_amount, 0, ',', '.') . "</strong></p>
+            </div>
+
+            " . ($purchaseOrder->notes ? "
+            <div class='notes'>
+                <h3>Notes</h3>
+                <p>{$purchaseOrder->notes}</p>
+            </div>" : '') . "
+
+            <div class='footer'>
+                <p>Generated on " . date('M d, Y H:i:s') . " by Sarange ERP System</p>
+                <p>This is a computer-generated document and does not require a signature.</p>
+            </div>
+        </body>
+        </html>";
+
+        return $html;
+    }
 }

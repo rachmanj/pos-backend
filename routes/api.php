@@ -193,6 +193,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
         Route::get('purchase-orders/analytics', [PurchaseOrderController::class, 'analytics']);
         Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
+        Route::get('purchase-orders/{purchaseOrder}/download-pdf', [PurchaseOrderController::class, 'downloadPDF']);
     });
 
     // Purchase Orders - management access

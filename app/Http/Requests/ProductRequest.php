@@ -47,6 +47,7 @@ class ProductRequest extends FormRequest
             'min_stock_level' => 'required|integer|min:0',
             'max_stock_level' => 'nullable|integer|min:0|gte:min_stock_level',
             'tax_rate' => 'required|numeric|min:0|max:100',
+            'initial_stock' => 'nullable|integer|min:0',
             'image' => 'nullable|string|max:255',
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ];

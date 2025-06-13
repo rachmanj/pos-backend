@@ -36,6 +36,11 @@ class Customer extends Model
         'company_name',
         'notes',
         'preferences',
+        // Tax Configuration
+        'tax_exempt',
+        'tax_rate_override',
+        'exemption_reason',
+        'exemption_details',
         'referred_by',
         'referral_count',
         // New CRM fields
@@ -81,6 +86,7 @@ class Customer extends Model
         'credit_limit' => 'decimal:2',
         'total_spent' => 'decimal:2',
         'loyalty_points' => 'decimal:2',
+        'tax_rate_override' => 'decimal:2',
         'average_order_value' => 'decimal:2',
         'annual_revenue' => 'decimal:2',
         'discount_percentage' => 'decimal:2',
@@ -97,6 +103,7 @@ class Customer extends Model
         'sms_marketing_consent' => 'boolean',
         'phone_marketing_consent' => 'boolean',
         'is_blacklisted' => 'boolean',
+        'tax_exempt' => 'boolean',
     ];
 
     // Existing Relationships

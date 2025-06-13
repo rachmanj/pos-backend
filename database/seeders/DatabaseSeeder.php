@@ -18,6 +18,10 @@ class DatabaseSeeder extends Seeder
         $this->call(InventoryPermissionsSeeder::class);
         $this->call(WarehousePermissionsSeeder::class);
         $this->call(SalesPermissionsSeeder::class);
+        $this->call(SalesOrderPermissionsSeeder::class);
+        $this->call(ARPermissionsSeeder::class);
+        $this->call(CustomerCrmPermissionsSeeder::class);
+        $this->call(PurchasePaymentPermissionsSeeder::class);
         $this->call(ReportsPermissionsSeeder::class);
 
         // Seed sales-related data

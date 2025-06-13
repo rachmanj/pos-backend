@@ -145,12 +145,27 @@ class Product extends Model
 
         static::created(function ($product) {
             // Create stock record when product is created
+            $initialStock = request('initial_stock', 0);
+
             ProductStock::create([
                 'product_id' => $product->id,
-                'current_stock' => 0,
+                'current_stock' => $initialStock,
                 'reserved_stock' => 0,
-                'available_stock' => 0,
+                'available_stock' => $initialStock,
             ]);
+
+            // Create initial stock movement if initial stock > 0
+            if ($initialStock > 0) {
+                StockMovement::create([
+                    'product_id' => $product->id,
+                    'movement_type' => 'in',
+                    'quantity' => $initialStock,
+                    'reference_type' => 'initial_stock',
+                    'reference_id' => $product->id,
+                    'notes' => 'Initial stock entry',
+                    'user_id' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                ]);
+            }
         });
     }
 }
